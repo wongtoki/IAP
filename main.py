@@ -1,5 +1,4 @@
 import requests
-import bs4
 from urllib.parse import quote as encodeurl
 import time
 import random
