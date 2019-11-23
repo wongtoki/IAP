@@ -7,13 +7,22 @@ import json
 import sys
 import uber
 
+
+from datetime import datetime
 from nltk.corpus import stopwords
 
 STOPWORD_LIST = set(stopwords.words('english'))
 
 WORDLIST = {
-    "assent": ["yes", "ok", "alright", "fine", "right"],
-    "sp": ["you", "he", "she", "it", "one", "me", "i"]
+    "assent": ["yes", "ok", "alright", "fine", "right", "agree", "okay", "confirm", "approve", "pass", "accept"],
+
+    "sp": ["you", "he", "she", "it", "one", "me", "i", 
+            "they", "him", "her", "my", "mine", "your", 
+            "yours", "his", "her", "hers", "its",
+            "who", "whom", "whose", "what", "which",
+            "another", "each", "everything", "nobody", "either", "someone",
+            "whose", "that", "myself", "yourself", "himself", "herself", "itself",
+            "this"]
 }
 
 
@@ -27,18 +36,14 @@ class User:
         self.avg_word_count = 0
         self.words_used = []
         self.assent_words = 0
-        self.singularPronouns = 0
-        self.replyCount = 0
+        self.singular_pronouns = 0
+        self.reply_count = 0
+        self.avg_assent_wordcount = 0
+        self.avg_sp_wordcount = 0   
 
     def add_comment(self, comment):
-        self.replyCount += 1
+        self.reply_count += 1
         self.comments.append(comment)
-
-        totalLength = 0
-        for s in self.comments:
-            totalLength += len(s.split())
-
-        self.avg_word_count = totalLength / len(self.comments)
 
         new_words = self.count_words(comment)
         for token in new_words:
@@ -52,11 +57,22 @@ class User:
         self.words_used.sort(key = lambda token : token[1], reverse = True)
 
         for token in comment.split():
-            if token in WORDLIST["assent"]:
+            if token.lower() in WORDLIST["assent"]:
                 self.assent_words += 1
-            elif token in WORDLIST["sp"]:
-                self.singularPronouns += 1
+            elif token.lower() in WORDLIST["sp"]:
+                self.singular_pronouns += 1
         
+        totalLength = 0
+        
+        for s in self.comments:
+            totalLength += len(s.split())
+            
+
+        self.avg_word_count = totalLength / len(self.comments)
+        self.avg_assent_wordcount = self.assent_words / len(self.comments)
+        self.avg_sp_wordcount = self.singular_pronouns / len(self.comments)
+
+
 
     def count_words(self, comment):
         wordlist = []
@@ -116,7 +132,7 @@ def main():
     raw = requests.get(url).json()
 
     items = raw["data"]["items"]
-    with open("result.json", "w") as file:
+    with open(f"result_{datetime.now()}.json", "w") as file:
         comments = []
         for item in items:
             url = item["url"]
@@ -124,9 +140,12 @@ def main():
             comments.extend(uber.get_comments(url))
             
         userlist = log_user_invlovement(comments)
-        userlist.sort(key = lambda obj : obj.replyCount, reverse = True)
+        userlist.sort(key = lambda obj : obj.reply_count, reverse = True)
         file.write(json.dumps([item.__dict__ for item in userlist], sort_keys=True, indent=4, separators=(',', ': ')))
 
+        print(f"Number of users: {len(userlist)}")
+        print(f"Total number of posts: {len(items)}")
+        
 
 if __name__ == "__main__":
     main()
